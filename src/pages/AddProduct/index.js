@@ -13,22 +13,66 @@ import {
 import {Header} from '../../component';
 import Images from '../../assets';
 import * as ImagePicker from 'react-native-image-picker';
+import {useSelector} from 'react-redux';
+import axios from 'axios';
+import QueryString from 'qs';
 
 const AddProduct = ({navigation}) => {
+  const stateGlobal = useSelector(state => state);
   const [image, setImage] = useState();
+  const [productName, setProductName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
 
   const upload = () => {
     // Open Image Library:
     ImagePicker.launchImageLibrary(
-      {mediaType: 'photo', quality: 1},
+      {mediaType: 'photo', quality: 0.5, includeBase64: true},
       response => {
         if (response.didCancel || response.error) {
           Alert.alert('oops, batal memilih foto.');
         } else {
-          setImage(response);
+          if (response?.assets[0]?.fileSize < 1000000) {
+            setImage(response);
+          } else {
+            Alert.alert('Ukuran gambar tidak boleh lebih dari 500kb');
+          }
         }
       },
     );
+  };
+
+  const save = async () => {
+    if (productName === '' || description === '' || price === '') {
+      Alert.alert('Peringatan', 'Data isian tidak boleh kosong');
+      return false;
+    }
+
+    const url = 'http://api-test.q.camp404.com/public/api/material';
+
+    const data = QueryString.stringify({
+      nama_barang: productName,
+      deskripsi: description,
+      harga: price,
+      gambar: `data:image/jpg;base64,${image.assets[0].base64}`,
+    });
+
+    await axios({
+      method: 'post',
+      url: url,
+      headers: {
+        Authorization: `Bearer ${stateGlobal.access_token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: data,
+    })
+      .then(response => {
+        Alert.alert('Berhasil Ditambahkan');
+        navigation.goBack();
+      })
+      .catch(error => {
+        Alert.alert('Gagal Ditambahkan');
+      });
   };
 
   return (
@@ -36,16 +80,27 @@ const AddProduct = ({navigation}) => {
       <Header title={'Add Product'} />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>Product Name</Text>
-        <TextInput style={styles.textInput} />
+        <TextInput
+          style={styles.textInput}
+          value={productName}
+          onChangeText={setProductName}
+        />
         <Text style={styles.label}>Description</Text>
         <TextInput
           style={styles.textArea}
           numberOfLines={3}
           multiline
           textAlignVertical={'top'}
+          value={description}
+          onChangeText={setDescription}
         />
         <Text style={styles.label}>Price</Text>
-        <TextInput style={styles.textInput} />
+        <TextInput
+          style={styles.textInput}
+          keyboardType={'decimal-pad'}
+          value={price}
+          onChangeText={setPrice}
+        />
         <Text style={styles.label}>Photo</Text>
         <TouchableOpacity style={styles.uploadImage} onPress={() => upload()}>
           {image?.assets ? (
@@ -58,7 +113,7 @@ const AddProduct = ({navigation}) => {
             <Image source={Images.ICPlus} style={styles.plushIcon} />
           )}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnSave}>
+        <TouchableOpacity style={styles.btnSave} onPress={() => save()}>
           <Text style={styles.btnSaveText}>Save</Text>
         </TouchableOpacity>
       </ScrollView>

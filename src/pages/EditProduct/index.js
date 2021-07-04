@@ -12,10 +12,14 @@ import {
 import * as ImagePicker from 'react-native-image-picker';
 import Images from '../../assets';
 import {Header} from '../../component';
+import {useSelector} from 'react-redux';
+import axios from 'axios';
+import QueryString from 'qs';
 
 const EditProduct = ({navigation, route}) => {
+  const stateGlobal = useSelector(state => state);
   const [productName, setProductName] = useState(route?.params?.title);
-  const [desc, setDesc] = useState(route?.params?.desc);
+  const [description, setDescription] = useState(route?.params?.desc);
   const [price, setPrice] = useState(route?.params?.price);
   const [img, setImg] = useState(route?.params?.image);
   const [image, setImage] = useState();
@@ -23,16 +27,57 @@ const EditProduct = ({navigation, route}) => {
   const upload = () => {
     // Open Image Library:
     ImagePicker.launchImageLibrary(
-      {mediaType: 'photo', quality: 1},
+      {mediaType: 'photo', quality: 0.5, includeBase64: true},
       response => {
         if (response.didCancel || response.error) {
           Alert.alert('oops, batal memilih foto.');
         } else {
-          setImage(response);
-          setImg(response.assets[0].urionse);
+          if (response?.assets[0]?.fileSize < 1000000) {
+            setImage(response);
+          } else {
+            Alert.alert('Ukuran gambar tidak boleh lebih dari 500kb');
+          }
         }
       },
     );
+  };
+
+  const update = async () => {
+    if (
+      (productName === '' || productName === route?.params?.title) &&
+      (description === '' || description === route?.params?.desc) &&
+      (price === '' || price === route?.params?.price) &&
+      image === undefined
+    ) {
+      Alert.alert('Peringatan', 'Data isian tidak boleh kosong');
+      return false;
+    }
+
+    const url = `http://api-test.q.camp404.com/public/api/material/${route?.params?.id}`;
+
+    const data = QueryString.stringify({
+      nama_barang: productName,
+      deskripsi: description,
+      harga: price,
+      gambar: image ? `data:image/jpg;base64,${image?.assets[0]?.base64}` : img,
+    });
+
+    await axios({
+      method: 'PATCH',
+      url: url,
+      headers: {
+        Authorization: `Bearer ${stateGlobal.access_token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: data,
+    })
+      .then(response => {
+        Alert.alert('Berhasil Diubah');
+        navigation.goBack();
+      })
+      .catch(error => {
+        Alert.alert('Gagal Diubah');
+      });
   };
 
   return (
@@ -50,21 +95,21 @@ const EditProduct = ({navigation, route}) => {
           style={styles.textArea}
           numberOfLines={3}
           multiline
-          value={desc}
-          onChangeText={setDesc}
+          value={description}
+          onChangeText={setDescription}
           textAlignVertical={'top'}
         />
         <Text style={styles.label}>Price</Text>
         <TextInput
           style={styles.textInput}
-          value={price}
+          value={price.toString()}
           onChangeText={setPrice}
         />
         <Text style={styles.label}>Photo</Text>
         <TouchableOpacity style={styles.uploadImage} onPress={() => upload()}>
-          {img ? (
+          {img || image ? (
             <Image
-              source={{uri: img}}
+              source={{uri: image?.assets[0]?.uri || img}}
               resizeMode={'cover'}
               style={styles.previewImage}
             />
@@ -72,7 +117,7 @@ const EditProduct = ({navigation, route}) => {
             <Image source={Images.ICPlus} style={styles.plushIcon} />
           )}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnUpdate}>
+        <TouchableOpacity style={styles.btnUpdate} onPress={() => update()}>
           <Text style={styles.btnUpdateText}>Update</Text>
         </TouchableOpacity>
       </ScrollView>

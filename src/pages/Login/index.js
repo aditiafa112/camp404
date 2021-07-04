@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,16 +7,48 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import Images from '../../assets';
+import axios from 'axios';
+import {useDispatch} from 'react-redux';
+import {storeData, getData} from '../../localStorage';
 
 const Login = ({navigation}) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('anton.irawan@camp404.com');
+  const [password, setPassword] = useState('camp4042021');
+  const dispatch = useDispatch();
 
   const login = () => {
-    navigation.replace('MainApp');
+    axios
+      .post('http://api-test.q.camp404.com/public/api/login', {
+        email: email,
+        password: password,
+        password_confirmation: password,
+      })
+      .then(response => {
+        let res = response.data;
+        dispatch({
+          type: 'SET_LOGIN',
+          value: {user: res.user, access_token: res.access_token},
+        });
+        storeData('user', {user: res.user, access_token: res.access_token});
+        navigation.replace('MainApp');
+      })
+      .catch(error => {
+        Alert.alert('Login Failed', error.response.data.message);
+      });
   };
+
+  useEffect(() => {
+    getData('user').then(res => {
+      dispatch({
+        type: 'SET_LOGIN',
+        value: res,
+      });
+      navigation.replace('MainApp');
+    });
+  }, []);
 
   return (
     <SafeAreaView style={styles.page}>
