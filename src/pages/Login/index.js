@@ -15,8 +15,8 @@ import {useDispatch} from 'react-redux';
 import {storeData, getData} from '../../localStorage';
 
 const Login = ({navigation}) => {
-  const [email, setEmail] = useState('anton.irawan@camp404.com');
-  const [password, setPassword] = useState('camp4042021');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const dispatch = useDispatch();
 
   const login = () => {
@@ -42,11 +42,13 @@ const Login = ({navigation}) => {
 
   useEffect(() => {
     getData('user').then(res => {
-      dispatch({
-        type: 'SET_LOGIN',
-        value: res,
-      });
-      navigation.replace('MainApp');
+      if (res !== null) {
+        dispatch({
+          type: 'SET_LOGIN',
+          value: res,
+        });
+        navigation.replace('MainApp');
+      }
     });
   }, []);
 
